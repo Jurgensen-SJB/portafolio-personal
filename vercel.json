@@ -1,4 +1,14 @@
 {
+  "builds": [
+    {
+      "src": "html/**/*.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "assets/**/*",
+      "use": "@vercel/static"
+    }
+  ],
   "rewrites": [
     {
       "source": "/",
@@ -7,12 +17,6 @@
     {
       "source": "/proyectos",
       "destination": "/html/proyectos.html"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/favicon.ico",
-      "dest": "/assets/favicon.ico"
     }
   ]
 }
