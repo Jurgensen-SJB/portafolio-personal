@@ -1,4 +1,14 @@
 {
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/html/index.html"
+    },
+    {
+      "source": "/proyectos",
+      "destination": "/html/proyectos.html"
+    }
+  ],
   "routes": [
     {
       "src": "/favicon.ico",
