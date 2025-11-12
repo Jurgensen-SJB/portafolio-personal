@@ -439,309 +439,99 @@
     return parseLimit(null);
   }
 
-  function buildFetchHeaders(authToken) {
-    var headers = {
-      Accept: 'application/vnd.github+json'
-    };
-
-    if (authToken) {
-      headers.Authorization = 'Bearer ' + authToken;
-      headers['X-GitHub-Api-Version'] = '2022-11-28';
-    }
-
-    return headers;
-  }
-
-  function fetchGithubRepos(username, sort, limit, apiBaseUrl, authToken) {
-    var perPage = 100;
-    var accumulated = [];
-    var page = 1;
-    var remaining = limit;
-    var baseUrl = (apiBaseUrl || 'https://api.github.com').replace(/\/+$/, '');
-
-    function requestPage() {
-      var currentPerPage = limit === Infinity ? perPage : Math.min(perPage, remaining);
-
-      var apiUrl =
-        baseUrl +
-        '/users/' +
-        encodeURIComponent(username) +
-        '/repos?sort=' +
-        encodeURIComponent(sort) +
-        '&per_page=' +
-        encodeURIComponent(currentPerPage) +
-        '&page=' +
-        encodeURIComponent(page);
-
-      return fetch(apiUrl, {
-        headers: buildFetchHeaders(authToken)
-      }).then(function (response) {
-        if (response.status === 404) {
-          throw new Error('No se encontró el usuario de GitHub "' + username + '".');
-        }
-
-        if (response.status === 403) {
-          throw new Error(
-            'GitHub API alcanzó el límite de peticiones públicas. Inténtalo de nuevo en unos minutos.'
-          );
-        }
-
-        if (!response.ok) {
-          throw new Error('No se pudieron cargar los repositorios desde GitHub.');
-        }
-
-        return response.json();
-      }).then(function (repos) {
-        if (!Array.isArray(repos) || !repos.length) {
-          return [];
-        }
-
-        accumulated = accumulated.concat(repos);
-
-        if (limit !== Infinity) {
-          remaining -= repos.length;
-        }
-
-        var shouldContinue =
-          repos.length === currentPerPage &&
-          (limit === Infinity || remaining > 0);
-
-        if (shouldContinue) {
-          page += 1;
-          return requestPage();
-        }
-
-        return [];
-      });
-    }
-
-    return requestPage().then(function () {
-      return limit === Infinity ? accumulated : accumulated.slice(0, limit);
-    });
-  }
-
-  function fetchAuthenticatedUser(apiBaseUrl, authToken) {
-    if (!authToken) {
-      return Promise.resolve(null);
-    }
-
-    var baseUrl = (apiBaseUrl || 'https://api.github.com').replace(/\/+$/, '');
-
-    return fetch(baseUrl + '/user', {
-      headers: buildFetchHeaders(authToken)
-    })
-      .then(function (response) {
-        if (!response.ok) {
-          throw new Error('No se pudo obtener la información del usuario autenticado.');
-        }
-        return response.json();
-      })
-      .catch(function () {
-        return null;
-      });
-  }
-
-  function fetchAuthenticatedRepos(sort, limit, apiBaseUrl, authToken) {
-    if (!authToken) {
+  function fetchGithubRepos(username, sort, limit, apiBaseUrl, direction) {
+    if (!username) {
       return Promise.resolve([]);
     }
 
-    var perPage = 100;
-    var accumulated = [];
-    var page = 1;
-    var remaining = limit;
-    var baseUrl = (apiBaseUrl || 'https://api.github.com').replace(/\/+$/, '');
+    var baseUrl = (apiBaseUrl || '/api/github').replace(/\/+$/, '');
+    var searchParams = new URLSearchParams();
+    searchParams.set('username', username);
+    searchParams.set('sort', (sort || 'updated').trim());
+    searchParams.set('direction', (direction || 'desc').trim());
+    searchParams.set('include_forks', 'false');
 
-    function requestPage() {
-      var currentPerPage = limit === Infinity ? perPage : Math.min(perPage, remaining);
+    if (limit && limit !== Infinity) {
+      searchParams.set('per_page', Math.min(100, Number(limit)) || 100);
+    } else {
+      searchParams.set('per_page', '100');
+    }
 
-      var apiUrl =
-        baseUrl +
-        '/user/repos?sort=' +
-        encodeURIComponent(sort) +
-        '&visibility=all&per_page=' +
-        encodeURIComponent(currentPerPage) +
-        '&page=' +
-        encodeURIComponent(page);
+    var apiUrl = baseUrl + '/repos?' + searchParams.toString();
 
-      return fetch(apiUrl, {
-        headers: buildFetchHeaders(authToken)
-      }).then(function (response) {
-        if (response.status === 401) {
-          throw new Error('El token de GitHub no es válido o expiró.');
-        }
+    return fetch(apiUrl)
+      .then(function (response) {
+        return response
+          .json()
+          .catch(function () {
+            return {};
+          })
+          .then(function (payload) {
+            if (!response.ok) {
+              var message =
+                (payload && (payload.error || payload.details)) ||
+                'No se pudieron cargar los repositorios desde la API.';
+              throw new Error(message);
+            }
 
-        if (response.status === 403) {
-          throw new Error(
-            'GitHub API alcanzó el límite de peticiones públicas o el token no tiene permisos suficientes.'
-          );
-        }
+            if (payload && Array.isArray(payload.repositories)) {
+              return payload.repositories;
+            }
 
-        if (!response.ok) {
-          throw new Error('No se pudieron cargar los repositorios privados de GitHub.');
-        }
+            if (Array.isArray(payload)) {
+              return payload;
+            }
 
-        return response.json();
-      }).then(function (repos) {
-        if (!Array.isArray(repos) || !repos.length) {
-          return [];
-        }
-
-        accumulated = accumulated.concat(repos);
-
-        if (limit !== Infinity) {
-          remaining -= repos.length;
-        }
-
-        var shouldContinue =
-          repos.length === currentPerPage &&
-          (limit === Infinity || remaining > 0);
-
-        if (shouldContinue) {
-          page += 1;
-          return requestPage();
-        }
-
-        return [];
+            return [];
+          });
+      })
+      .catch(function (error) {
+        throw new Error(
+          error && error.message
+            ? error.message
+            : 'No se pudieron cargar los repositorios desde la API.'
+        );
       });
-    }
-
-    return requestPage().then(function () {
-      return limit === Infinity ? accumulated : accumulated.slice(0, limit);
-    });
-  }
-
-  function getStoredToken(storageKey) {
-    var token = '';
-
-    try {
-      if (storageKey && typeof window !== 'undefined') {
-        if (window.localStorage && window.localStorage.getItem(storageKey)) {
-          token = window.localStorage.getItem(storageKey) || '';
-        } else if (window.sessionStorage && window.sessionStorage.getItem(storageKey)) {
-          token = window.sessionStorage.getItem(storageKey) || '';
-        }
-      }
-    } catch (error) {
-      token = '';
-    }
-
-    return token;
-  }
-
-  function resolveAuthToken(container) {
-    if (!container) {
-      return '';
-    }
-
-    var explicitToken =
-      container.dataset.githubAuthToken ||
-      document.body.dataset.githubAuthToken ||
-      '';
-
-    if (explicitToken) {
-      return explicitToken;
-    }
-
-    var storageKey =
-      container.dataset.githubAuthStorageKey ||
-      document.body.dataset.githubAuthStorageKey ||
-      'githubAuthToken';
-
-    return getStoredToken(storageKey);
   }
 
   function loadRepositories(config) {
     var users = config.users || [];
-    var sort = config.sort;
+    var sort = config.sort || 'updated';
     var limit = config.limit;
     var apiBaseUrl = config.apiBaseUrl;
-    var authToken = config.authToken;
+    var direction = config.direction || 'desc';
 
-    var originalUsersMap = new Map();
+    var uniqueUsers = new Map();
     users.forEach(function (user) {
       if (!user) {
         return;
       }
-      originalUsersMap.set(user.toLowerCase(), user);
+      uniqueUsers.set(user.toLowerCase(), user);
     });
 
-    var normalizedUsers = Array.from(originalUsersMap.keys());
+    if (!uniqueUsers.size) {
+      return Promise.reject(
+        new Error('Configura al menos un usuario de GitHub válido.')
+      );
+    }
 
-    return fetchAuthenticatedUser(apiBaseUrl, authToken).then(function (authUser) {
-      var authLogin = authUser && authUser.login ? authUser.login : null;
-      var authLoginLower = authLogin ? authLogin.toLowerCase() : null;
+    var fetchPromises = [];
 
-      if (!normalizedUsers.length && authLogin) {
-        normalizedUsers.push(authLoginLower);
-        if (!originalUsersMap.has(authLoginLower)) {
-          originalUsersMap.set(authLoginLower, authLogin);
+    uniqueUsers.forEach(function (originalUser) {
+      fetchPromises.push(
+        fetchGithubRepos(originalUser, sort, limit, apiBaseUrl, direction).catch(function () {
+          return [];
+        })
+      );
+    });
+
+    return Promise.all(fetchPromises).then(function (results) {
+      return results.reduce(function (acc, repos) {
+        if (Array.isArray(repos)) {
+          return acc.concat(repos);
         }
-      }
-
-      var allowedOwners = normalizedUsers.length
-        ? new Set(normalizedUsers)
-        : authLoginLower
-          ? new Set([authLoginLower])
-          : null;
-
-      var fetchPromises = [];
-
-      if (authToken && authLogin) {
-        fetchPromises.push(
-          fetchAuthenticatedRepos(sort, limit, apiBaseUrl, authToken)
-            .then(function (repos) {
-              if (!Array.isArray(repos)) {
-                return [];
-              }
-
-              return repos.filter(function (repo) {
-                if (!repo || !repo.owner || !repo.owner.login) {
-                  return false;
-                }
-
-                var ownerLower = repo.owner.login.toLowerCase();
-
-                if (allowedOwners && allowedOwners.size) {
-                  return allowedOwners.has(ownerLower);
-                }
-
-                return ownerLower === authLoginLower;
-              });
-            })
-            .catch(function () {
-              return [];
-            })
-        );
-
-        if (authLoginLower) {
-          originalUsersMap.delete(authLoginLower);
-        }
-      }
-
-      originalUsersMap.forEach(function (originalUser, lowerUser) {
-        fetchPromises.push(
-          fetchGithubRepos(originalUser, sort, limit, apiBaseUrl, authToken)
-            .catch(function () {
-              return [];
-            })
-        );
-      });
-
-      if (!fetchPromises.length) {
-        return Promise.reject(
-          new Error('Configura al menos un usuario de GitHub válido o proporciona un token con acceso.')
-        );
-      }
-
-      return Promise.all(fetchPromises).then(function (results) {
-        return results.reduce(function (acc, repos) {
-          if (Array.isArray(repos)) {
-            return acc.concat(repos);
-          }
-          return acc;
-        }, []);
-      });
+        return acc;
+      }, []);
     });
   }
 
@@ -845,7 +635,11 @@
     var apiBaseUrl =
       (container.dataset.githubApiBase && container.dataset.githubApiBase.trim()) ||
       (typeof globalConfig.apiBaseUrl === 'string' && globalConfig.apiBaseUrl.trim()) ||
-      'https://api.github.com';
+      '/api/github';
+    var direction =
+      (container.dataset.githubDirection && container.dataset.githubDirection.trim()) ||
+      (typeof globalConfig.direction === 'string' && globalConfig.direction.trim()) ||
+      'desc';
     var includeList = resolveConfigList(
       parseListAttribute(container.dataset.githubInclude),
       globalConfig.include
@@ -854,12 +648,10 @@
       parseListAttribute(container.dataset.githubExclude),
       globalConfig.exclude
     );
-    var authToken = resolveAuthToken(container);
-
-    if ((!users || !users.length) && !authToken) {
+    if (!users || !users.length) {
       renderStatus(
         statusElement,
-        'Configura uno o más usuarios en data-github-users o proporciona un token para acceder a tus repositorios.',
+        'Configura uno o más usuarios en data-github-users o en la variable GITHUB_PROJECTS_CONFIG.',
         'error'
       );
       return;
@@ -875,7 +667,7 @@
       sort: sort,
       limit: limit,
       apiBaseUrl: apiBaseUrl,
-      authToken: authToken
+      direction: direction
     })
       .then(function (repos) {
         var filteredRepos = filterRepositories(repos, {

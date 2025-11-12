@@ -70,7 +70,15 @@ module.exports = async function handler(req, res) {
       created_at: repo.created_at,
       updated_at: repo.updated_at,
       pushed_at: repo.pushed_at,
-      archived: repo.archived
+      archived: repo.archived,
+      fork: repo.fork,
+      owner: repo.owner
+        ? {
+            login: repo.owner.login,
+            avatar_url: repo.owner.avatar_url,
+            html_url: repo.owner.html_url
+          }
+        : null
     }));
 
     return res.status(200).json({

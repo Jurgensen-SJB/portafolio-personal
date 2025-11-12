@@ -54,7 +54,14 @@ module.exports = async function handler(req, res) {
       disabled: data.disabled,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      pushed_at: data.pushed_at
+      pushed_at: data.pushed_at,
+      owner: data.owner
+        ? {
+            login: data.owner.login,
+            avatar_url: data.owner.avatar_url,
+            html_url: data.owner.html_url
+          }
+        : null
     };
 
     return res.status(200).json(result);
