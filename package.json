@@ -1,0 +1,15 @@
+{
+  "name": "portafolio-personal-backend",
+  "version": "1.0.0",
+  "description": "Funciones serverless para el portafolio personal integradas con la API de GitHub y desplegables en Vercel.",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "@octokit/rest": "^21.0.2"
+  }
+}
+
