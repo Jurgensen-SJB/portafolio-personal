@@ -14,8 +14,10 @@ Configura estas variables en Vercel (`Project Settings > Environment Variables`)
 
 | Variable           | Descripción                                                                 |
 | ------------------ | --------------------------------------------------------------------------- |
-| `GITHUB_TOKEN`     | Token personal de GitHub usado para autenticación.                          |
+| `GITHUB_TOKEN`     | Token personal de GitHub usado para autenticación (recomendado).            |
 | `GITHUB_USERNAME`  | Usuario de GitHub por defecto para las consultas (puede sobrescribirse vía query). |
+
+> Si no defines `GITHUB_TOKEN`, las funciones seguirán funcionando para repositorios públicos pero estarás sujeto al límite de peticiones anónimas de GitHub (60 por hora).
 
 ## Scripts disponibles
 
