@@ -383,6 +383,34 @@
     });
   }
 
+  function applyFilter(selector) {
+    var grid = document.getElementById('github-projects');
+    if (!grid) {
+      return;
+    }
+
+    if (window.portfolioIsotope && typeof window.portfolioIsotope.isotope === 'function') {
+      window.portfolioIsotope.isotope({ filter: selector }).isotope('layout');
+      return;
+    }
+
+    var items = grid.querySelectorAll('.grid-item');
+    items.forEach(function (item) {
+      if (selector === '*' || item.matches(selector)) {
+        item.style.display = '';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  }
+
+  function highlightSelectedButton(container, selectedButton) {
+    var buttons = container.querySelectorAll('button');
+    buttons.forEach(function (button) {
+      button.classList.toggle('selected', button === selectedButton);
+    });
+  }
+
   function updateFilterButtons(languages) {
     if (!languages.size) {
       return;
@@ -405,10 +433,30 @@
       .forEach(function (language) {
       var button = document.createElement('button');
       button.className = 'btn btn-theme-outline';
-      button.setAttribute('data-filter', '.lang-' + slugify(language));
+
+      var slug = slugify(language);
+      var selector = '.lang-' + slug;
+      button.setAttribute('data-filter', selector);
       button.textContent = language;
+
+      button.addEventListener('click', function (event) {
+        event.preventDefault();
+        applyFilter(selector);
+        highlightSelectedButton(filterContainer, button);
+      });
+
       filterContainer.appendChild(button);
     });
+
+    var allButton = filterContainer.querySelector('[data-filter="*"]');
+    if (allButton && !allButton.hasAttribute('data-default-initialized')) {
+      allButton.setAttribute('data-default-initialized', 'true');
+      allButton.addEventListener('click', function (event) {
+        event.preventDefault();
+        applyFilter('*');
+        highlightSelectedButton(filterContainer, allButton);
+      });
+    }
   }
 
   function parseLimit(rawLimit) {
