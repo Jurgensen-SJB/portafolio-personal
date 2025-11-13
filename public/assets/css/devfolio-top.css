@@ -105,6 +105,14 @@
   background-color: #fff;
 }
 
+.light-mode .navbar-b.navbar-reduce .navbar-toggler span {
+  background-color: #1B1B1B;
+}
+
+.dark-mode .navbar-b.navbar-reduce .navbar-toggler span {
+  background-color: #fff;
+}
+
 .navbar-b .navbar-brand {
   color: #fff;
   font-size: 1.6rem;
@@ -116,9 +124,24 @@
   color: #fff;
 }
 
+.light-mode .navbar-b.navbar-reduce .theme-toggle-btn,
+.light-mode .navbar-b.navbar-reduce .theme-toggle-btn .theme-toggle-icon {
+  color: #1B1B1B;
+}
+
+.dark-mode .navbar-b.navbar-reduce .theme-toggle-btn,
+.dark-mode .navbar-b.navbar-reduce .theme-toggle-btn .theme-toggle-icon {
+  color: #fff;
+}
+
 .navbar-b.navbar-reduce .theme-toggle-btn:hover,
 .navbar-b.navbar-reduce .theme-toggle-btn:focus {
-  color: #fff;
+  color: inherit;
+}
+
+.navbar-b.navbar-reduce .theme-toggle-btn:hover .theme-toggle-icon,
+.navbar-b.navbar-reduce .theme-toggle-btn:focus .theme-toggle-icon {
+  color: inherit;
 }
 
 .navbar-toggler {
