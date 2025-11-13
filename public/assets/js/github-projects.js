@@ -715,7 +715,13 @@
       direction: direction
     })
       .then(function (repos) {
-        var filteredRepos = filterRepositories(repos, {
+        var allRepositories = filterRepositories(repos, {
+          include: includeSet,
+          exclude: excludeSet,
+          limit: Infinity
+        });
+
+        var filteredRepos = filterRepositories(allRepositories, {
           include: includeSet,
           exclude: excludeSet,
           limit: limit
@@ -731,22 +737,24 @@
         }
 
         var fragment = document.createDocumentFragment();
-    var languages = new Set();
-    var languageStats = Object.create(null);
+        var languages = new Set();
+        var languageStats = Object.create(null);
+
+        allRepositories.forEach(function (repo) {
+          var languageName = repo.language && repo.language.trim() ? repo.language.trim() : FALLBACK_LANGUAGE_NAME;
+
+          if (languageName) {
+            languages.add(languageName);
+
+            var stats = languageStats[languageName] || { count: 0, stars: 0, forks: 0 };
+            stats.count += 1;
+            stats.stars += repo.stargazers_count || 0;
+            stats.forks += repo.forks_count || 0;
+            languageStats[languageName] = stats;
+          }
+        });
 
         filteredRepos.forEach(function (repo) {
-        var languageName = repo.language && repo.language.trim() ? repo.language.trim() : FALLBACK_LANGUAGE_NAME;
-
-        if (languageName) {
-          languages.add(languageName);
-
-          var stats = languageStats[languageName] || { count: 0, stars: 0, forks: 0 };
-          stats.count += 1;
-          stats.stars += repo.stargazers_count || 0;
-          stats.forks += repo.forks_count || 0;
-          languageStats[languageName] = stats;
-        }
-
           fragment.appendChild(createProjectCard(repo));
         });
 
@@ -764,7 +772,7 @@
           container.appendChild(fragment);
         }
 
-        updateSkills(languageStats, filteredRepos.length);
+        updateSkills(languageStats, allRepositories.length);
 
         updateFilterButtons(languages);
 
