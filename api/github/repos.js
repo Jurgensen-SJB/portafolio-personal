@@ -86,10 +86,27 @@ module.exports = async function handler(req, res) {
       repositories: simplified
     });
   } catch (error) {
-    const status = error.status || 500;
+    const status =
+      error.status ||
+      (error.response && error.response.status) ||
+      500;
+
+    console.error("Error al listar repositorios:", {
+      status,
+      message: error.message,
+      response: error.response && error.response.data
+    });
+
     return res.status(status).json({
-      error: "No se pudo recuperar la lista de repositorios.",
-      details: error.message
+      error:
+        (error.response && error.response.data && error.response.data.message) ||
+        error.message ||
+        "No se pudo recuperar la lista de repositorios.",
+      status,
+      hint:
+        status === 403
+          ? "GitHub devolvió 403. Asegúrate de configurar un GITHUB_TOKEN válido en Vercel para aumentar el límite de peticiones."
+          : undefined
     });
   }
 };

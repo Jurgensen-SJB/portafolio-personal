@@ -66,10 +66,27 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json(result);
   } catch (error) {
-    const status = error.status || 500;
+    const status =
+      error.status ||
+      (error.response && error.response.status) ||
+      500;
+
+    console.error("Error al obtener repositorio:", {
+      status,
+      message: error.message,
+      response: error.response && error.response.data
+    });
+
     return res.status(status).json({
-      error: "No se pudo recuperar la información del repositorio.",
-      details: error.message
+      error:
+        (error.response && error.response.data && error.response.data.message) ||
+        error.message ||
+        "No se pudo recuperar la información del repositorio.",
+      status,
+      hint:
+        status === 403
+          ? "GitHub devolvió 403. Añade un GITHUB_TOKEN en Vercel para evitar límites de peticiones."
+          : undefined
     });
   }
 };
