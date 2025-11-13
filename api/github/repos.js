@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
   let octokit;
 
   try {
-    octokit = createOctokit();
+    octokit = await createOctokit();
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }

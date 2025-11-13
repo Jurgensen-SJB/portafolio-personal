@@ -461,36 +461,33 @@
 
     return fetch(apiUrl)
       .then(function (response) {
-        return response
-          .json()
-          .catch(function () {
-            return {};
-          })
-          .then(function (payload) {
-            if (!response.ok) {
-              var message =
-                (payload && (payload.error || payload.details)) ||
-                'No se pudieron cargar los repositorios desde la API.';
-              throw new Error(message);
+        return response.json().then(function (payload) {
+          if (!response.ok) {
+            var message =
+              (payload && (payload.error || payload.details || payload.message)) ||
+              'No se pudieron cargar los repositorios desde la API.';
+
+            if (payload && payload.status) {
+              message += ' (status ' + payload.status + ')';
             }
 
-            if (payload && Array.isArray(payload.repositories)) {
-              return payload.repositories;
+            if (payload && payload.hint) {
+              message += ' ' + payload.hint;
             }
 
-            if (Array.isArray(payload)) {
-              return payload;
-            }
+            throw new Error(message);
+          }
 
-            return [];
-          });
-      })
-      .catch(function (error) {
-        throw new Error(
-          error && error.message
-            ? error.message
-            : 'No se pudieron cargar los repositorios desde la API.'
-        );
+          if (payload && Array.isArray(payload.repositories)) {
+            return payload.repositories;
+          }
+
+          if (Array.isArray(payload)) {
+            return payload;
+          }
+
+          return [];
+        });
       });
   }
 
